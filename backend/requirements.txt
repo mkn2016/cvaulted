@@ -1,0 +1,9 @@
+flask<2.0,>=1.0
+flask-sqlalchemy
+flask-praetorian
+python-dotenv
+flask-restful
+flask-restx
+flask-marshmallow
+marshmallow
+marshmallow-sqlalchemy
