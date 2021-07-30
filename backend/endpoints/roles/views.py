@@ -6,9 +6,7 @@ from flask_praetorian.exceptions import (
     ExpiredAccessError,
     MissingRoleError
 )
-
 from sqlalchemy.exc import IntegrityError
-
 from flask_restx import Api, Resource
 from flask_praetorian.decorators import auth_required, roles_required
 

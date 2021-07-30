@@ -15,6 +15,7 @@ class User(db.Model, TimestampMixin):
     is_active = db.Column(db.Boolean, default=True, server_default="true")
 
     profile = db.relationship('Profile', backref='user', uselist=False)
+    account = db.relationship('Account', backref='user', uselist=False)
     roles = db.relationship('Role', secondary=roles, lazy='dynamic', backref=db.backref('users', lazy=True))
 
     def __str__(self) -> str:
@@ -70,10 +71,26 @@ class Profile(db.Model, TimestampMixin):
         return cls.query.all()
 
     @classmethod
-    def get_profile_by_user_id(cls, id):
-        return cls.query.filter(Profile.user_id==id).first()
+    def get_profile_by_user_id(cls, user_id):
+        return cls.query.filter(Profile.user_id==user_id).first()
     
     @classmethod
     def get_profile_by_id(cls, id):
         return cls.query.get(id)
 
+
+class Account(db.Model, TimestampMixin):
+    # Mask 12 digits of 16 digits of card number
+    id = db.Column(db.Integer, primary_key=True)
+    card_no = db.Column(db.Integer, unique=True, nullable=False)
+    expiration_date = db.Column(db.DateTime)
+
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    @classmethod
+    def get_all(cls):
+        return cls.query.all()
+
+    @classmethod
+    def get_acccount_by_id(cls, id):
+        return cls.query.get(id)

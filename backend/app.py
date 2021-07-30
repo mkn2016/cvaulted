@@ -8,7 +8,7 @@ from extensions import *
 from endpoints.users.models import User
 from endpoints.users.views import users_blueprint
 from endpoints.roles.views import roles_blueprint
-from endpoints.auth.views import auth
+from endpoints.auth.views import auth_blueprint
 
 
 class MainApp(Flask):
@@ -33,7 +33,7 @@ class MainApp(Flask):
             self.config.from_object('config.development.DevelopmentConfig')
     
     def initalize_blueprints(self):
-        self.register_blueprint(auth)
+        self.register_blueprint(auth_blueprint)
         self.register_blueprint(users_blueprint)
         self.register_blueprint(roles_blueprint)
 
