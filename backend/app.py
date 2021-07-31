@@ -1,7 +1,6 @@
 from json import dumps
 
 from flask import Flask
-from werkzeug.exceptions import HTTPException
 from flask.json import jsonify
 
 from extensions import *
@@ -21,16 +20,18 @@ class MainApp(Flask):
         db.init_app(self)
         ma.init_app(self)
         security.init_app(self, User)
+        cors.init_app(self)
+        limiter.init_app(self)
     
     def initialize_configurations(self):
         if self.kwargs.get("environment") == "development":
-            self.config.from_object('config.development.DevelopmentConfig')
+            self.config.from_object("config.development.DevelopmentConfig")
         elif self.kwargs.get("environment") == "staging":
-            self.config.from_object('config.staging.StagingConfig')
+            self.config.from_object("config.staging.StagingConfig")
         elif self.kwargs.get("environment") == "production":
-            self.config.from_object('config.production.ProductionConfig')
+            self.config.from_object("config.production.ProductionConfig")
         else:
-            self.config.from_object('config.development.DevelopmentConfig')
+            self.config.from_object("config.development.DevelopmentConfig")
     
     def initalize_blueprints(self):
         self.register_blueprint(auth_blueprint)

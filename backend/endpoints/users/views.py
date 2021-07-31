@@ -1,12 +1,12 @@
 from datetime import datetime
 
-from flask import Blueprint, json, jsonify, request
+from flask import Blueprint, jsonify, request
 from flask_praetorian.exceptions import (
     AuthenticationError,
     ExpiredAccessError,
     MissingRoleError
 )
-from flask_praetorian import current_user_id, current_user
+from flask_praetorian import current_user_id
 
 from flask_restx import Api, Resource
 from flask_praetorian.decorators import auth_required, roles_accepted, roles_required
@@ -14,8 +14,9 @@ from flask_praetorian.decorators import auth_required, roles_accepted, roles_req
 from extensions import db
 from endpoints.users.schemas import ProfileSchema, UserSchema
 from endpoints.users.models import Profile, User
-from endpoints.users.models import roles as roles_rel
+from endpoints.permissions.permissions import is_owner
 from endpoints.roles.models import Role
+
 
 users_blueprint = Blueprint(
     "users",
@@ -215,6 +216,7 @@ class UserCreateProfileResource(Resource):
     @users_api.response(500, 'AuthenticationError')
     @users_api.response(500, 'ExpiredAccessError')
     @auth_required
+    @is_owner
     def post(self):
         data = request.get_json(force=True)
 
@@ -244,6 +246,7 @@ class UserUpdateProfileResource(Resource):
     @users_api.response(500, 'AuthenticationError')
     @users_api.response(500, 'ExpiredAccessError')
     @auth_required
+    @is_owner
     def put(self, id):
         profile = Profile.get_profile_by_id(id)
 

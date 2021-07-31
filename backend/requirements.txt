@@ -2,8 +2,10 @@ flask<2.0,>=1.0
 flask-sqlalchemy
 flask-praetorian
 python-dotenv
-flask-restful
 flask-restx
+flask-cors
 flask-marshmallow
 marshmallow
 marshmallow-sqlalchemy
+passlib
+Flask-Limiter

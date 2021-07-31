@@ -3,16 +3,18 @@ from extensions import db
 from endpoints.roles.models import Role
 from endpoints.mixins.timestamp import TimestampMixin
 
+
 roles = db.Table('user_roles',
     db.Column('role_id', db.Integer, db.ForeignKey('role.id'), primary_key=True),
     db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
 )
 
+
 class User(db.Model, TimestampMixin):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.Text)
-    password = db.Column(db.Text)
-    is_active = db.Column(db.Boolean, default=True, server_default="true")
+    username = db.Column(db.String(100), unique=True)
+    password = db.Column(db.String(100))
+    is_active = db.Column(db.Boolean, default=False, server_default="false")
 
     profile = db.relationship('Profile', backref='user', uselist=False)
     account = db.relationship('Account', backref='user', uselist=False)
