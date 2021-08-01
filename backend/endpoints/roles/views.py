@@ -1,48 +1,48 @@
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import jsonify, request
 from flask_praetorian.exceptions import (
     AuthenticationError,
     ExpiredAccessError,
     MissingRoleError
 )
 from sqlalchemy.exc import IntegrityError
-from flask_restx import Api, Resource
+from flask_restx import Resource, Namespace
 from flask_praetorian.decorators import auth_required, roles_required
 
 from extensions import db
 from endpoints.users.schemas import RoleSchema
 from endpoints.roles.models import Role
 
-roles_blueprint = Blueprint("roles", __name__)
-roles_api = Api(roles_blueprint)
+
+role_namespace = Namespace("roles", description="Authentication and Authorization Operations", path="/roles")
 
 
-@roles_api.errorhandler(MissingRoleError)
+@role_namespace.errorhandler(MissingRoleError)
 def handle_error(e):
     return {"message": str(e)}
 
-@roles_api.errorhandler(IntegrityError)
+@role_namespace.errorhandler(IntegrityError)
 def handle_error(e):
-    return {"message": "Could not create role. A role with that name already exists"}
+    return {"message": f"Duplicate entries forbidden: {str(e)}"}
 
-@roles_api.errorhandler(AuthenticationError)
-def handle_error(e):
-    return {"message": str(e)}
-
-@roles_api.errorhandler(ExpiredAccessError)
+@role_namespace.errorhandler(AuthenticationError)
 def handle_error(e):
     return {"message": str(e)}
 
-@roles_api.route("/roles")
+@role_namespace.errorhandler(ExpiredAccessError)
+def handle_error(e):
+    return {"message": str(e)}
+
+@role_namespace.route("/")
 class RolesResource(Resource):
-    @roles_api.doc("List_Roles")
-    @roles_api.response(200, 'Success')
-    @roles_api.response(500, 'MissingRoleError')
-    @roles_api.response(500, 'AuthenticationError')
-    @roles_api.response(500, 'ExpiredAccessError')
+    @role_namespace.doc("List_Roles")
+    @role_namespace.response(200, 'Success')
+    @role_namespace.response(500, 'MissingRoleError')
+    @role_namespace.response(500, 'AuthenticationError')
+    @role_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
+    @roles_required("superuser", "admin")
     def get(self):
         roles = Role.get_all()
 
@@ -50,13 +50,13 @@ class RolesResource(Resource):
         data=serializer.dump(roles)
         return {"data": data}
     
-    @roles_api.doc("Create_Role")
-    @roles_api.response(200, 'Success')
-    @roles_api.response(500, 'MissingRoleError')
-    @roles_api.response(500, 'AuthenticationError')
-    @roles_api.response(500, 'ExpiredAccessError')
+    @role_namespace.doc("Create_Role")
+    @role_namespace.response(200, 'Success')
+    @role_namespace.response(500, 'MissingRoleError')
+    @role_namespace.response(500, 'AuthenticationError')
+    @role_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
+    @roles_required("superuser", "admin")
     def post(self):
         data = request.get_json(force=True)
 
@@ -75,16 +75,16 @@ class RolesResource(Resource):
             return jsonify({"message": "role saved successfully"})
 
 
-@roles_api.route("/roles/<int:id>")
+@role_namespace.route("/<int:id>")
 class RoleResource(Resource):
-    @roles_api.doc("Get_Role")
-    @roles_api.response(200, 'Success')
-    @roles_api.response(404, 'Role not found')
-    @roles_api.response(500, 'MissingRoleError')
-    @roles_api.response(500, 'AuthenticationError')
-    @roles_api.response(500, 'ExpiredAccessError')
+    @role_namespace.doc("Get_Role")
+    @role_namespace.response(200, 'Success')
+    @role_namespace.response(404, 'Role not found')
+    @role_namespace.response(500, 'MissingRoleError')
+    @role_namespace.response(500, 'AuthenticationError')
+    @role_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
+    @roles_required("superuser", "admin")
     def get(self, id):
         user = Role.get_role_by_id(id)
 
@@ -100,14 +100,14 @@ class RoleResource(Resource):
                 404
             )
 
-    @roles_api.doc("Update_Role")
-    @roles_api.response(200, 'Success')
-    @roles_api.response(404, 'Role not found')
-    @roles_api.response(500, 'MissingRoleError')
-    @roles_api.response(500, 'AuthenticationError')
-    @roles_api.response(500, 'ExpiredAccessError')
+    @role_namespace.doc("Update_Role")
+    @role_namespace.response(200, 'Success')
+    @role_namespace.response(404, 'Role not found')
+    @role_namespace.response(500, 'MissingRoleError')
+    @role_namespace.response(500, 'AuthenticationError')
+    @role_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
+    @roles_required("superuser", "admin")
     def put(self, id):
         role = Role.get_role_by_id(id)
         
@@ -135,13 +135,13 @@ class RoleResource(Resource):
                 404
             )
     
-    @roles_api.doc("Delete_Role")
-    @roles_api.response(200, 'Success')
-    @roles_api.response(500, 'MissingRoleError')
-    @roles_api.response(500, 'AuthenticationError')
-    @roles_api.response(500, 'ExpiredAccessError')
+    @role_namespace.doc("Delete_Role")
+    @role_namespace.response(200, 'Success')
+    @role_namespace.response(500, 'MissingRoleError')
+    @role_namespace.response(500, 'AuthenticationError')
+    @role_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
+    @roles_required("superuser", "admin")
     def delete(self, id):
         role = Role.get_role_by_id(id)
 

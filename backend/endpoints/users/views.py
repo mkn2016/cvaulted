@@ -8,45 +8,45 @@ from flask_praetorian.exceptions import (
 )
 from flask_praetorian import current_user_id
 
-from flask_restx import Api, Resource
+from flask_restx import Resource, Namespace
 from flask_praetorian.decorators import auth_required, roles_accepted, roles_required
+from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from endpoints.users.schemas import ProfileSchema, UserSchema
 from endpoints.users.models import Profile, User
-from endpoints.permissions.permissions import is_owner
+from endpoints.permissions.permissions import is_not_owner, is_owner
 from endpoints.roles.models import Role
 
 
-users_blueprint = Blueprint(
-    "users",
-    __name__,
-    url_prefix="/users/"
-)
+user_namespace = Namespace("users", description="Authentication and Authorization Operations", path="/users")
 
-users_api = Api(users_blueprint)
 
-@users_api.errorhandler(MissingRoleError)
+@user_namespace.errorhandler(MissingRoleError)
 def handle_error(e):
     return {"message": str(e)}
 
-@users_api.errorhandler(AuthenticationError)
+@user_namespace.errorhandler(AuthenticationError)
 def handle_error(e):
     return {"message": str(e)}
 
-@users_api.errorhandler(ExpiredAccessError)
+@user_namespace.errorhandler(ExpiredAccessError)
 def handle_error(e):
     return {"message": str(e)}
 
-@users_api.route("/")
+@user_namespace.errorhandler(IntegrityError)
+def handle_error(e):
+    return {"message": f"Profile already exists. Duplicate entries forbidden"}
+
+
 class UserListResource(Resource):
-    @users_api.doc("List_Users")
-    @users_api.response(200, 'Success')
-    @users_api.response(500, 'MissingRoleError')
-    @users_api.response(500, 'AuthenticationError')
-    @users_api.response(500, 'ExpiredAccessError')
+    @user_namespace.doc("List_Users")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(500, 'MissingRoleError')
+    @user_namespace.response(500, 'AuthenticationError')
+    @user_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
+    @roles_required("superuser", "admin")
     def get(self):
         users = User.get_all()
 
@@ -55,16 +55,15 @@ class UserListResource(Resource):
         return {"data": data}
 
 
-@users_api.route("/<int:id>")
 class UserResource(Resource):
-    @users_api.doc("Get_User")
-    @users_api.response(200, 'Success')
-    @users_api.response(404, 'User not found')
-    @users_api.response(500, 'MissingRoleError')
-    @users_api.response(500, 'AuthenticationError')
-    @users_api.response(500, 'ExpiredAccessError')
+    @user_namespace.doc("Get_User")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(404, 'User not found')
+    @user_namespace.response(500, 'MissingRoleError')
+    @user_namespace.response(500, 'AuthenticationError')
+    @user_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
+    @roles_required("superuser", "admin")
     def get(self, id):
         user = User.identify(id)
 
@@ -80,14 +79,15 @@ class UserResource(Resource):
                 404
             )
     
-    @users_api.doc("Update_User")
-    @users_api.response(200, 'Success')
-    @users_api.response(404, 'User not found')
-    @users_api.response(500, 'MissingRoleError')
-    @users_api.response(500, 'AuthenticationError')
-    @users_api.response(500, 'ExpiredAccessError')
+    @user_namespace.doc("Update_User")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(404, 'User not found')
+    @user_namespace.response(500, 'MissingRoleError')
+    @user_namespace.response(500, 'AuthenticationError')
+    @user_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
+    @roles_required("superuser", "admin")
+    @is_not_owner
     def put(self, id):
         user = User.identify(id)
         
@@ -165,13 +165,13 @@ class UserResource(Resource):
                 404
             )
 
-@users_api.route("/profiles")
+
 class UserProfilesResource(Resource):
-    @users_api.doc("Get_User_Profiles")
-    @users_api.response(200, 'Success')
-    @users_api.response(500, 'MissingRoleError')
-    @users_api.response(500, 'AuthenticationError')
-    @users_api.response(500, 'ExpiredAccessError')
+    @user_namespace.doc("Get_User_Profiles")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(500, 'MissingRoleError')
+    @user_namespace.response(500, 'AuthenticationError')
+    @user_namespace.response(500, 'ExpiredAccessError')
     @auth_required
     @roles_accepted("superuser", "manager", "admin", "moderator")
     def get(self):
@@ -182,16 +182,13 @@ class UserProfilesResource(Resource):
         return {"data": data}
 
 
-@users_api.route("/<int:id>/profile")
 class UserProfileResource(Resource):
-    @users_api.doc("Get_User_Profile")
-    @users_api.response(200, 'Success')
-    @users_api.response(404, 'User profile not found')
-    @users_api.response(500, 'MissingRoleError')
-    @users_api.response(500, 'AuthenticationError')
-    @users_api.response(500, 'ExpiredAccessError')
+    @user_namespace.doc("Get_User_Profile")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(404, 'User profile not found')
+    @user_namespace.response(500, 'AuthenticationError')
+    @user_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "manager")
     def get(self, id):
         profile = Profile.get_profile_by_user_id(id)
 
@@ -207,16 +204,12 @@ class UserProfileResource(Resource):
                 404
             )
 
-
-@users_api.route("/profile/create")
 class UserCreateProfileResource(Resource):
-    @users_api.doc("Create_User_Profile")
-    @users_api.response(200, 'Success')
-    @users_api.response(500, 'MissingRoleError')
-    @users_api.response(500, 'AuthenticationError')
-    @users_api.response(500, 'ExpiredAccessError')
+    @user_namespace.doc("Create_User_Profile")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(500, 'AuthenticationError')
+    @user_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @is_owner
     def post(self):
         data = request.get_json(force=True)
 
@@ -237,18 +230,18 @@ class UserCreateProfileResource(Resource):
             return jsonify({"message": "profile created successfully"})
 
 
-@users_api.route("/<int:id>/profile/edit")
 class UserUpdateProfileResource(Resource):
-    @users_api.doc("Edit_User_Profile")
-    @users_api.response(200, 'Success')
-    @users_api.response(404, 'User profile not found')
-    @users_api.response(500, 'MissingRoleError')
-    @users_api.response(500, 'AuthenticationError')
-    @users_api.response(500, 'ExpiredAccessError')
+    @user_namespace.doc("Edit_User_Profile")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(404, 'User profile not found')
+    @user_namespace.response(500, 'MissingRoleError')
+    @user_namespace.response(500, 'AuthenticationError')
+    @user_namespace.response(500, 'ExpiredAccessError')
     @auth_required
     @is_owner
     def put(self, id):
-        profile = Profile.get_profile_by_id(id)
+
+        profile = Profile.get_profile_by_user_id(current_user_id())
 
         if profile:
             data = request.get_json(force=True)
@@ -273,3 +266,10 @@ class UserUpdateProfileResource(Resource):
                 }, 
                 404
             )
+
+user_namespace.add_resource(UserListResource, "/")
+user_namespace.add_resource(UserResource, "/<int:id>")
+user_namespace.add_resource(UserProfilesResource, "/profiles")
+user_namespace.add_resource(UserProfileResource, "/<int:id>/profile")
+user_namespace.add_resource(UserCreateProfileResource, "/profile/create")
+user_namespace.add_resource(UserUpdateProfileResource, "/<int:id>/profile/edit")

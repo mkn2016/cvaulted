@@ -1,13 +1,8 @@
-from json import dumps
-
 from flask import Flask
-from flask.json import jsonify
 
 from extensions import *
 from endpoints.users.models import User
-from endpoints.users.views import users_blueprint
-from endpoints.roles.views import roles_blueprint
-from endpoints.auth.views import auth_blueprint
+from endpoints.api.apiv1 import api_v1_blueprint as api
 
 
 class MainApp(Flask):
@@ -34,9 +29,12 @@ class MainApp(Flask):
             self.config.from_object("config.development.DevelopmentConfig")
     
     def initalize_blueprints(self):
-        self.register_blueprint(auth_blueprint)
-        self.register_blueprint(users_blueprint)
-        self.register_blueprint(roles_blueprint)
+        try:
+            self.register_blueprint(api)
+        except:
+            print("could not register blueprints")
+        else:
+            print("successfully registered blueprints")
 
     def setup(self):
         self.initialize_configurations()

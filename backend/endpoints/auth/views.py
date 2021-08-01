@@ -1,5 +1,6 @@
+from sys import path
 from flask import Blueprint, jsonify, request
-from flask_restx import Api, Resource
+from flask_restx import Resource, Namespace
 from flask_praetorian.exceptions import AuthenticationError
 from sqlalchemy.exc import IntegrityError
 
@@ -7,30 +8,24 @@ from extensions import security, db, limiter
 from endpoints.users.models import User
 
 
-auth_blueprint = Blueprint(
-    "auth",
-    __name__,
-    url_prefix="/auth"
-)
-auth_api = Api(auth_blueprint)
+auth_namespace = Namespace("auth", description="Authentication and Authorization Operations", path="/auth")
 
 
-@auth_api.errorhandler(AuthenticationError)
+@auth_namespace.errorhandler(AuthenticationError)
 def handle_error(e):
     return {"message": str(e)}
 
-@auth_api.errorhandler(IntegrityError)
+@auth_namespace.errorhandler(IntegrityError)
 def handle_error(e):
     return {"message": "Registration failed. Please use a different username"}
 
-
-@auth_api.route("/login")
+@auth_namespace.route("/login")
 class AuthResource(Resource):
     decorators = [limiter.limit("5/minute")]
 
-    @auth_api.doc("Login")
-    @auth_api.response(200, 'Success')
-    @auth_api.response(500, 'AuthenticationError')
+    @auth_namespace.doc("Login")
+    @auth_namespace.response(200, 'Success')
+    @auth_namespace.response(500, 'AuthenticationError')
     def post(self):
         data = request.get_json(force=True)
 
@@ -86,11 +81,10 @@ class AuthResource(Resource):
                 403
             )
 
-
-@auth_api.route("/register")
+@auth_namespace.route("/register")
 class AuthRegisterResource(Resource):
-    @auth_api.doc("Register")
-    @auth_api.response(200, 'Success')
+    @auth_namespace.doc("Register")
+    @auth_namespace.response(200, 'Success')
     def post(self):
         data = request.get_json(force=True)
 

@@ -1,7 +1,10 @@
+from enum import unique
+from operator import index
 from extensions import db
 
 from endpoints.roles.models import Role
 from endpoints.mixins.timestamp import TimestampMixin
+from flask_praetorian import current_user_id
 
 
 roles = db.Table('user_roles',
@@ -25,7 +28,7 @@ class User(db.Model, TimestampMixin):
     
     @classmethod
     def get_all(cls):
-        return cls.query.all()
+        return cls.query.filter(User.id!=current_user_id())
 
     @property
     def identity(self):
@@ -61,24 +64,24 @@ class User(db.Model, TimestampMixin):
 
 class Profile(db.Model, TimestampMixin):
     id = db.Column(db.Integer, primary_key=True)
-    first_name = db.Column(db.String(100), nullable=True)
+    first_name = db.Column(db.String(100), nullable=False)
     middle_name = db.Column(db.String(100), nullable=True)
-    surname = db.Column(db.String(100), nullable=True)
+    surname = db.Column(db.String(100), nullable=False)
     gender = db.Column(db.String(20), nullable=True)
 
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True, unique=True)
 
     @classmethod
     def get_all(cls):
         return cls.query.all()
 
     @classmethod
-    def get_profile_by_user_id(cls, user_id):
-        return cls.query.filter(Profile.user_id==user_id).first()
-    
-    @classmethod
     def get_profile_by_id(cls, id):
         return cls.query.get(id)
+
+    @classmethod
+    def get_profile_by_user_id(cls, user_id):
+        return cls.query.filter(Profile.user_id==user_id).first()
 
 
 class Account(db.Model, TimestampMixin):
