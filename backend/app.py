@@ -1,4 +1,5 @@
-from flask import Flask
+from flask import Flask, config
+from flask_restx import resource
 
 from extensions import *
 from endpoints.users.models import User
@@ -15,7 +16,19 @@ class MainApp(Flask):
         db.init_app(self)
         ma.init_app(self)
         security.init_app(self, User)
-        cors.init_app(self)
+        api_v1_config = {
+            "origins": [
+                "*"
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE"],
+            "allow_headers": ["Authorization", "Content-Type"]
+        }
+        cors.init_app(self,
+            resources={
+                r"/api/v1/*": api_v1_config
+            },
+            supports_credentials=True
+        )
         limiter.init_app(self)
     
     def initialize_configurations(self):

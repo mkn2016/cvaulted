@@ -1,10 +1,11 @@
-from sys import path
-from flask import Blueprint, jsonify, request
+from flask import jsonify, request
 from flask_restx import Resource, Namespace
+from flask_restx.cors import crossdomain
 from flask_praetorian.exceptions import AuthenticationError
+from flask_limiter.errors import RateLimitExceeded
 from sqlalchemy.exc import IntegrityError
 
-from extensions import security, db, limiter
+from extensions import security, db, limiter, cors
 from endpoints.users.models import User
 
 
@@ -17,7 +18,11 @@ def handle_error(e):
 
 @auth_namespace.errorhandler(IntegrityError)
 def handle_error(e):
-    return {"message": "Registration failed. Please use a different username"}
+    return {"message": f"Duplicate entries forbidden: {str(e)}"}
+
+@auth_namespace.errorhandler(RateLimitExceeded)
+def handle_error(e):
+    return {"message": "Login attempts exceeded. 5 attempts per minute"}
 
 @auth_namespace.route("/login")
 class AuthResource(Resource):
@@ -25,12 +30,15 @@ class AuthResource(Resource):
 
     @auth_namespace.doc("Login")
     @auth_namespace.response(200, 'Success')
+    @auth_namespace.response(429, 'RateLimitExceeded')
     @auth_namespace.response(500, 'AuthenticationError')
     def post(self):
         data = request.get_json(force=True)
 
         username = data.get("username", None)
         password = data.get("password", None)
+
+        print(username, password)
 
         user = security.authenticate(
             username,
@@ -50,7 +58,7 @@ class AuthResource(Resource):
                         )
                     }
 
-                    return jsonify(token, 200)
+                    return jsonify({"data": token}, 200)
                 else:
                     token = {
                         "access_token": security.encode_jwt_token(
@@ -89,11 +97,13 @@ class AuthRegisterResource(Resource):
         data = request.get_json(force=True)
 
         username = data.get("username", None)
+        email = data.get("email", None)
         password = data.get("password", None)
 
-        if username and password:
+        if username and email and password:
             user = User(
                 username=username,
+                email=email,
                 password=security.hash_password(password)
             )
             
@@ -109,7 +119,20 @@ class AuthRegisterResource(Resource):
         else:
             return jsonify(
                 {
-                    "errors": "Username or password is required"
+                    "message": "Username or email or password is required"
                 },
                 400
             )
+
+@auth_namespace.route("/logout")
+class AuthLogoutResource(Resource):
+    @auth_namespace.doc("Logout")
+    @auth_namespace.response(500, 'Failed')
+    @auth_namespace.response(200, 'Success')
+    def post(self):
+        try:
+            security.encode_jwt_token(is_reset_token=True)
+        except:
+            return jsonify({"message": "Logged out failed"}, 500)
+        else:
+            return jsonify({"data": "Logged out successfully"}, 200)

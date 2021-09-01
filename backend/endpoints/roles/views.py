@@ -8,15 +8,14 @@ from flask_praetorian.exceptions import (
 )
 from sqlalchemy.exc import IntegrityError
 from flask_restx import Resource, Namespace
-from flask_praetorian.decorators import auth_required, roles_required
+from flask_praetorian.decorators import auth_required, roles_accepted, roles_required
 
 from extensions import db
 from endpoints.users.schemas import RoleSchema
 from endpoints.roles.models import Role
 
 
-role_namespace = Namespace("roles", description="Authentication and Authorization Operations", path="/roles")
-
+role_namespace = Namespace("roles", description="Roles Operations", path="/roles")
 
 @role_namespace.errorhandler(MissingRoleError)
 def handle_error(e):
@@ -34,7 +33,7 @@ def handle_error(e):
 def handle_error(e):
     return {"message": str(e)}
 
-@role_namespace.route("/")
+
 class RolesResource(Resource):
     @role_namespace.doc("List_Roles")
     @role_namespace.response(200, 'Success')
@@ -42,7 +41,7 @@ class RolesResource(Resource):
     @role_namespace.response(500, 'AuthenticationError')
     @role_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "admin")
+    @roles_accepted("superuser", "admin")
     def get(self):
         roles = Role.get_all()
 
@@ -75,7 +74,6 @@ class RolesResource(Resource):
             return jsonify({"message": "role saved successfully"})
 
 
-@role_namespace.route("/<int:id>")
 class RoleResource(Resource):
     @role_namespace.doc("Get_Role")
     @role_namespace.response(200, 'Success')
@@ -86,11 +84,11 @@ class RoleResource(Resource):
     @auth_required
     @roles_required("superuser", "admin")
     def get(self, id):
-        user = Role.get_role_by_id(id)
+        role = Role.get_role_by_id(id)
 
-        if user:
+        if role:
             serializer = RoleSchema()
-            data=serializer.dump(user)
+            data=serializer.dump(role)
             return {"data": data}
         else:
             return jsonify(
@@ -162,4 +160,6 @@ class RoleResource(Resource):
                 {"message": "Role not found. Skipping deletion"},
                 404
             )
-    
+
+role_namespace.add_resource(RolesResource, "/")
+role_namespace.add_resource(RoleResource, "/<int:id>")

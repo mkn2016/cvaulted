@@ -50,13 +50,21 @@ def make_migrations():
         superuser = Role(name='superuser')
         moderator = Role(name='moderator')
 
-        one = User(username='One', password=security.hash_password('Theone'))
-        two = User(username='Two', password=security.hash_password('Thetwo'))
-        three = User(username='Three', password=security.hash_password('TheThree'))
-        four = User(username='Four', password=security.hash_password('TheFour'))
-        five = User(username='Five', password=security.hash_password('TheFive'))
+        martin = User(username='martin', email="martin@gmail.com", password=security.hash_password('martin'))
+        ian = User(username='ian', email="ian@gmail.com", password=security.hash_password('ian'))
+        brenda = User(username='brenda', email="brenda@gmail.com", password=security.hash_password('brenda'))
+        mercy = User(username='mercy', email="mercy@gmail.com", password=security.hash_password('mercy'))
 
-        db.session.add_all([admin, manager, superuser, moderator, one, two, three, four, five])
+        db.session.add_all([
+            admin,
+            manager,
+            superuser,
+            moderator,
+            martin,
+            ian,
+            brenda,
+            mercy
+        ])
         db.session.commit()
 
 

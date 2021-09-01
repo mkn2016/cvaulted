@@ -21,3 +21,7 @@ class Role(db.Model, TimestampMixin):
     @classmethod
     def get_role_by_name(cls, name):
         return cls.query.filter(Role.name==name).first()
+    
+    @classmethod
+    def count(cls):
+        return cls.query.count()

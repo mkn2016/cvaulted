@@ -1,5 +1,5 @@
-flask<2.0,>=1.0
-flask-sqlalchemy
+Flask
+Flask-SQLAlchemy==2.5.0
 flask-praetorian
 python-dotenv
 flask-restx
@@ -9,3 +9,5 @@ marshmallow
 marshmallow-sqlalchemy
 passlib
 Flask-Limiter
+pycryptodome
+sqlalchemy>=1.4.0

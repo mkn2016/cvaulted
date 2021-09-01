@@ -7,5 +7,7 @@ class RoleSchema(ma.SQLAlchemySchema):
         model=Role
         fields=(
             "id",
-            "name"
+            "name",
+            "created",
+            "updated"
         )

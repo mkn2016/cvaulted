@@ -1,25 +1,27 @@
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import json, jsonify, request
 from flask_praetorian.exceptions import (
     AuthenticationError,
     ExpiredAccessError,
     MissingRoleError
 )
 from flask_praetorian import current_user_id
+from flask_praetorian.utilities import current_user
 
 from flask_restx import Resource, Namespace
 from flask_praetorian.decorators import auth_required, roles_accepted, roles_required
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
-from endpoints.users.schemas import ProfileSchema, UserSchema
-from endpoints.users.models import Profile, User
+from endpoints.users.schemas import AccountSchema, ProfileSchema, UserSchema
+from endpoints.users.models import Account, Profile, User
 from endpoints.permissions.permissions import is_not_owner, is_owner
 from endpoints.roles.models import Role
+from security.security import Security
 
 
-user_namespace = Namespace("users", description="Authentication and Authorization Operations", path="/users")
+user_namespace = Namespace("users", description="Users Operations", path="/users")
 
 
 @user_namespace.errorhandler(MissingRoleError)
@@ -36,7 +38,7 @@ def handle_error(e):
 
 @user_namespace.errorhandler(IntegrityError)
 def handle_error(e):
-    return {"message": f"Profile already exists. Duplicate entries forbidden"}
+    return {"message": "Duplicate entries forbidden"}
 
 
 class UserListResource(Resource):
@@ -46,7 +48,7 @@ class UserListResource(Resource):
     @user_namespace.response(500, 'AuthenticationError')
     @user_namespace.response(500, 'ExpiredAccessError')
     @auth_required
-    @roles_required("superuser", "admin")
+    @roles_accepted("superuser", "admin", "moderator")
     def get(self):
         users = User.get_all()
 
@@ -165,6 +167,16 @@ class UserResource(Resource):
                 404
             )
 
+class AuthenticatedUserResource(Resource):
+    @user_namespace.doc("Get_Authenticated_User")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(404, 'User not found')
+    @auth_required
+    def get(self):
+        user = current_user()
+        serializer = UserSchema()
+        data = serializer.dump(user)
+        return jsonify({"data": data}, 200)
 
 class UserProfilesResource(Resource):
     @user_namespace.doc("Get_User_Profiles")
@@ -267,9 +279,53 @@ class UserUpdateProfileResource(Resource):
                 404
             )
 
+class UserCreateAccountResource(Resource):
+    @user_namespace.doc("Create_Account")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(500, 'ExpiredAccessError')
+    @auth_required
+    def post(self):
+        data = request.get_json(force=True)
+
+        account = Account(
+            card_no=Security.encrypt(data.get("card_number")),
+            account_number=Security.encrypt(data.get("account_number")),
+            account_name=Security.encrypt(data.get("account_name")),
+            expiration_date=Security.encrypt(data.get("expiration_date")),
+            user_id=current_user_id()
+        )
+
+        try:
+            db.session.add(account)
+        except:
+            db.session.rollback()
+            pass
+        else:
+            db.session.commit()
+            return jsonify({"message": "Account created successfully"})
+
+class UserAccountsResource(Resource):
+    @user_namespace.doc("List_Accounts")
+    @user_namespace.response(200, 'Success')
+    @user_namespace.response(500, 'MissingRoleError')
+    @user_namespace.response(500, 'AuthenticationError')
+    @user_namespace.response(500, 'ExpiredAccessError')
+    @auth_required
+    @roles_accepted("superuser", "admin", "manager", "moderator")
+    def get(self):
+        accounts = Account.get_all()
+
+        serializer = AccountSchema(many=True)
+        data=serializer.dump(accounts)
+        return {"data": data}
+
+
 user_namespace.add_resource(UserListResource, "/")
+user_namespace.add_resource(AuthenticatedUserResource, "/user")
 user_namespace.add_resource(UserResource, "/<int:id>")
 user_namespace.add_resource(UserProfilesResource, "/profiles")
+user_namespace.add_resource(UserAccountsResource, "/accounts")
 user_namespace.add_resource(UserProfileResource, "/<int:id>/profile")
 user_namespace.add_resource(UserCreateProfileResource, "/profile/create")
 user_namespace.add_resource(UserUpdateProfileResource, "/<int:id>/profile/edit")
+user_namespace.add_resource(UserCreateAccountResource, "/account/create")

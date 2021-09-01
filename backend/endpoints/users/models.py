@@ -15,9 +15,10 @@ roles = db.Table('user_roles',
 
 class User(db.Model, TimestampMixin):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), unique=True)
-    password = db.Column(db.String(100))
-    is_active = db.Column(db.Boolean, default=False, server_default="false")
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(100), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, server_default="true")
 
     profile = db.relationship('Profile', backref='user', uselist=False)
     account = db.relationship('Account', backref='user', uselist=False)
@@ -60,6 +61,10 @@ class User(db.Model, TimestampMixin):
 
     def is_valid(self):
         return self.is_active
+    
+    @classmethod
+    def count(cls):
+        return cls.query.count()
 
 
 class Profile(db.Model, TimestampMixin):
@@ -83,19 +88,27 @@ class Profile(db.Model, TimestampMixin):
     def get_profile_by_user_id(cls, user_id):
         return cls.query.filter(Profile.user_id==user_id).first()
 
-
 class Account(db.Model, TimestampMixin):
-    # Mask 12 digits of 16 digits of card number
     id = db.Column(db.Integer, primary_key=True)
-    card_no = db.Column(db.Integer, unique=True, nullable=False)
-    expiration_date = db.Column(db.DateTime)
+    card_no = db.Column(db.String(150), unique=True, nullable=False)
+    account_number = db.Column(db.String(150), nullable=False)
+    account_name = db.Column(db.String(150), nullable=False)
+    expiration_date = db.Column(db.String(150), nullable=False)
 
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True, unique=False)
 
     @classmethod
     def get_all(cls):
         return cls.query.all()
 
     @classmethod
+    def count(cls):
+        return cls.query.count()
+
+    @classmethod
     def get_acccount_by_id(cls, id):
         return cls.query.get(id)
+
+    @classmethod
+    def get_account_by_user_id(cls, user_id):
+        return cls.query.filter(Account.user_id==user_id).first()
